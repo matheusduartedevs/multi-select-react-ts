@@ -1,27 +1,45 @@
 import { useEffect, useState } from "react"
 import styles from "./select.module.css"
 
-type SelectOption = {
+export type SelectOption = {
     label: string
     value: string | number
 }
 
-type SelectProps = {
+type SingleSelectProps = {
+    multiple?: false
     value?: SelectOption
     onChange: (value: SelectOption | undefined) => void
-    options: SelectOption[]
 }
 
-const Selects = ({ value, onChange, options }: SelectProps) => {
+type MultipleSelectProps = {
+    multiple: true
+    value: SelectOption[]
+    onChange: (value: SelectOption[]) => void
+}
+
+type SelectProps = {
+    options: SelectOption[]
+} & (SingleSelectProps | MultipleSelectProps)
+
+const Selects = ({ multiple, value, onChange, options }: SelectProps) => {
     const [isOpen, setIsOpen] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(0)
 
     const clearOptions = () => {
-        onChange(undefined)
+        multiple ? onChange([]) : onChange(undefined)
     }
 
     const selectOption = (option: SelectOption) => {
-        if (option !== value) onChange(option)
+        if (multiple) {
+            if (value.includes(option)) {
+                onChange(value.filter(o => o !== option))
+            } else {
+                onChange([...value, option])
+            }
+        } else {
+            if (option !== value) onChange(option)
+        }
     }
 
     const isOptionSelected = (option: SelectOption) => {
@@ -40,7 +58,19 @@ const Selects = ({ value, onChange, options }: SelectProps) => {
             onBlur={() => setIsOpen(false)}
         >
             <span className={styles.value}>
-                {value?.label}
+                {multiple ? value.map(v => (
+                    <button
+                        key={v.value}
+                        onClick={e => {
+                            e.stopPropagation()
+                            selectOption(v)
+                        }}
+                        className={styles['option-badge']}
+                    >
+                        {v.label}
+                        <span className={styles['remove-btn']}>&times;</span>
+                    </button>
+                )) : value?.label}
             </span>
 
             <button
@@ -52,7 +82,7 @@ const Selects = ({ value, onChange, options }: SelectProps) => {
             >
                 &times;
             </button>
-            
+
             <div className={styles.divider}></div>
             <div className={styles.caret}></div>
             <ul className={`${styles.options} ${isOpen ? styles.show : ''}`}>
